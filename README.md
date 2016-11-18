@@ -1,6 +1,8 @@
 # lowCache
 in memory cache use lowdb
 
+> 需要先 npm install lowdb
+
 ## 实例化缓存
 ````
 const CONFIG = {
@@ -70,6 +72,57 @@ const myDB = new LowCache(CONFIG);
   },
   {...}
 ]
+````
+
+## 使用示例
+下面是一个在 `express` 中使用的例子
+````
+let express = require('express');
+let app = express();
+let LowCache = require('../LowCache');
+
+const CONFIG = {
+    maxStack: 100, // int 最大占用内存,单位 MB
+    maxTimes: 10, // int 最大调用次数,单位 次
+    live: 600, // int 最长存活时间，单位 秒
+    name: 'advisers', // string 仓库名字
+};
+
+const myDB = new LowCache(CONFIG);
+
+app.use((req,res,next) => {
+    let data = {};
+    
+    // 判断缓存
+    const cache = myDB.use(req.session.token,req.originalUrl);
+
+    if(cache){
+        const result = cache.data;
+        data= result[0];
+        res.json(data)
+        return myDB.log('使用缓存数据');
+    }
+
+    myDB.log('没有可用缓存，重新请求数据')
+    
+    Promise.all([
+        request.get(url1),
+    ])
+    .then(result=>{
+        data= result[0];
+        // 请求成功，放入缓存
+        myDB.append({
+            key: req.originalUrl,
+            data: result
+        })
+    })
+    .catch(err=>'')
+    .then(()=>{
+        res.json(data)
+    }) 
+    
+});
+
 ````
 
 
