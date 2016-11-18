@@ -6,6 +6,7 @@ in memory cache use lowdb
 ## 实例化缓存
 ````
 const CONFIG = {
+    local: 'zh' || 'en', // string 提示信息语言
     maxStack: 100, // int 最大占用内存,单位 MB
     maxTimes: 10, // int 最大调用次数,单位 次
     live: 600, // int 最长存活时间，单位 秒
@@ -19,7 +20,9 @@ const myDB = new LowCache(CONFIG);
 
 ### 增加缓存 append
 >参数 object   [object]: 缓存对象
+
 >参数 object.key [string]: 缓存key
+
 >参数 object.data [string]: 缓存数据
 
 `myDB.append(object)`
@@ -29,6 +32,7 @@ const myDB = new LowCache(CONFIG);
 
 ### 使用缓存 use
 >参数 token [string]: 用户token，用于判断登录状态：登录状态改变后，会重置全部的缓存
+
 >参数 key   [string]: 缓存key
 
 `const cache = myDB.use(token,key);`
@@ -75,6 +79,8 @@ const myDB = new LowCache(CONFIG);
 ````
 
 ## 使用示例
+
+### 在控制器中使用
 下面是一个在 `express` 中使用的例子
 ````
 let express = require('express');
@@ -125,8 +131,40 @@ app.use((req,res,next) => {
 
 ````
 
+### 在通用的资源请求中使用
+````
+const axios = require('axios');
+const LowCache = require('../LowCache');
 
+const CONFIG = {
+    maxStack: 100, // int 最大占用内存,单位 MB
+    maxTimes: 10, // int 最大调用次数,单位 次
+    live: 600, // int 最长存活时间，单位 秒
+    name: 'advisers', // string 仓库名字
+};
 
+const myDB = new LowCache(CONFIG);
 
+let myRequest = (req,url,type,data) => {
 
+    const cache = myDB.use(req.session.token,req.originalUrl);
 
+    return new Promise((resolve, reject) => {
+
+        if(cache){
+            return resolve(cache.data)
+        }
+
+        axios[type](url,data)
+        .then(result=>{
+            myDB.append({
+                key: req.originalUrl,
+                data: result,
+            })
+        })
+        .catch(err=> reject(err))
+
+    })
+}
+
+````
